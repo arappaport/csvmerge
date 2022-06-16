@@ -52,7 +52,7 @@ def cli(ctx, **kwargs):
     #defaults to inner
     df = pd.merge(df_left, df_right, on=merge_col, how=how, suffixes=('_left', '_right'))
     df.fillna('',inplace=True)
-    LOGGER.debug("After merge. df has %d rows excluding header", len(df_right))
+    LOGGER.debug("After merge. df has %d rows excluding header", len(df))
 
     if kwargs.get('dryrun'):
         LOGGER.info("Dryrun.  skipping output")
