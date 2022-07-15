@@ -11,12 +11,16 @@ Usage: csvmerge.py [OPTIONS] LEFT RIGHT
 
    defaults to outer join
 
+    Join 2 csv files on a specific column. Wrapper around pandas dataframe merge().
+    See [pandas dataframe.merge doc](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.merge.html) for join behavior.
+
+
    Usage:
 
   Left Join two files on a column named 'id' 
   
 ```
-poetry run python ./src/csvmerge.py ./data/left.csv ./data/right.csv  --join left --left_on id
+poetry run python ./src/csvmerge.py ./data/left.csv ./data/right.csv  --join left --on id
   --output left_output.csv --verbose
 ```
 

@@ -6,11 +6,12 @@ import pandas as pd
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 LOGGER = logging.getLogger(__name__)
 @click.command()
-@click.argument('left',type=click.Path(exists=True))
-@click.argument('right',type=click.Path(exists=True))
-@click.option( '--left_on', help="Column to join on from left file")
-@click.option( '--right_on', help="Column to join on from right file.  If not, present then the --left_on is used")
-@click.option( '--join', default='outer', help='join type: inner, outer.   Defaults to outer',
+@click.argument('left_file',type=click.Path(exists=True))
+@click.argument('right_file',type=click.Path(exists=True))
+@click.option( '--on', help="Common column to use for both files.  Column must exist in both files")
+@click.option( '--left_on', help="Column to join on from left file. If supplied, then right_on must also be supplied.")
+@click.option( '--right_on', help="Column to join on from right file.  If supplied, then left_on must also be supplied.")
+@click.option( '--join', default='outer', help='join type: inner, outer.   Defaults to outer.',
               type=click.Choice(['outer', 'inner', 'left', 'right']))
 
 @click.option('-o', '--output',help='(optional) name of file to write data into. ')
@@ -22,17 +23,18 @@ LOGGER = logging.getLogger(__name__)
 @click.pass_context
 def cli(ctx, **kwargs):
     """
-    Join 2 csv files on a specific column.
+    Join 2 csv files on a specific column. Wrapper around pandas dataframe merge().
+    See [pandas dataframe.merge doc](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.merge.html) for join behavior.
 
     defaults to outer join
 
     Usage:
 
    Left Join two files on a column named 'id'
-   '''poetry run python ./src/csvmerge.py ./data/left.csv ./data/right.csv  --join left --left_on id  --output left_output.csv --verbose'''
+    poetry run python ./src/csvmerge.py ./data/left.csv ./data/right.csv  --join left --on id  --output left_output.csv --verbose
 
    Outer Join two files.   Left file join on column named 'id', right file on 'alt_id'
-   '''poetry run python ./src/csvmerge.py ./data/left.csv ./data/right.csv  --join outer --left_on id  --right_on alt_id --output outer_output.csv --verbose'''
+   poetry run python ./src/csvmerge.py ./data/left.csv ./data/right.csv  --join outer --left_on id  --right_on alt_id --output outer_output.csv --verbose
 
 
     """
@@ -45,21 +47,27 @@ def cli(ctx, **kwargs):
     if kwargs.get('verbose'):
         LOGGER.setLevel(logging.DEBUG)
 
-    df_left = pd.read_csv(kwargs.get('left'))
-    df_right = pd.read_csv(kwargs.get('right'))
-    merge_col = kwargs.get('merge_col')
+    df_left  = pd.read_csv(kwargs.get('left_file'))
+    df_right = pd.read_csv(kwargs.get('right_file'))
 
     how = kwargs.get('join')
 
     LOGGER.debug("File[%s] has %d rows excluding header", kwargs.get('left'), len(df_left))
     LOGGER.debug("File[%s] has %d rows excluding header", kwargs.get('right'), len(df_right))
 
-    left_on = kwargs.get('left_on')
-    right_on = kwargs.get('right_on') or left_on
+    left_on = kwargs.get('on')
+    if left_on:
+        right_on = left_on
+    else:
+        left_on  = kwargs.get('left_on')
+        right_on = kwargs.get('right_on')
+    if not left_on or not right_on:
+        print("ERROR:  must supply either an --on param, or both --left_on and --right_on")
+        exit(-1)
 
     #defaults to inner
     df = pd.merge(df_left, df_right, left_on=left_on, right_on=right_on,
-                  on=merge_col, how=how, suffixes=('_left', '_right'))
+                  how=how, suffixes=('_left', '_right'))
     df.fillna('',inplace=True)
     LOGGER.debug("After merge. df has %d rows excluding header", len(df))
 
@@ -69,8 +77,6 @@ def cli(ctx, **kwargs):
         output = kwargs.get('output')
         df.to_csv(output,  encoding='utf-8', index=False)
         LOGGER.info("Output to file[%s]", output)
-
-    #TODO Test merge col doesn;t exist in both csvs
 
 if __name__ == '__main__':
     cli(obj={})
